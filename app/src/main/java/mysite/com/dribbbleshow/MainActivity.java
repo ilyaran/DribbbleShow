@@ -41,7 +41,7 @@ import mysite.com.dribbbleshow.AppUtils.FileIO;
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
 
-    private static final int perPage = 12;
+    private static final int perPage = 8;
     private String url = "https://api.dribbble.com/v1/shots?per_page=" + perPage + "&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
     private List<Shot> shotList = new ArrayList<>();
     private RecyclerView recyclerView;
@@ -52,7 +52,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private boolean mayLoad = true;
     private LinearLayout progressBar;
     private int responseLengthForImageLoad;
-    private int responseLength;
 
     // The life span of and item in the history folder
     private final long SHOT_LIFESPAN_MS = 24 * 3600000; // 24 hours in milliseconds
@@ -137,18 +136,20 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
+
                     mayLoad = true;
                     swipeRefreshLayout.setRefreshing(false);
-                    new AlertDialog(MainActivity.this, getString(R.string.no_connection));
 
+                    new AlertDialog(MainActivity.this, getString(R.string.no_connection));
                     loadShotsFromDisk();
                 }
             });
             AppController.getInstance().addToRequestQueue(strReq, "string_req");
         } else {
+
+            new AlertDialog(MainActivity.this, getString(R.string.no_connection));
             mayLoad = true;
             swipeRefreshLayout.setRefreshing(false);
-            new AlertDialog(MainActivity.this, getString(R.string.no_connection));
 
             loadShotsFromDisk();
         }
@@ -162,32 +163,23 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
 
         responseLengthForImageLoad = 0;
-        responseLength = 0;
+
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
                     public void onResponse(String response) {
-
                         JSONArray jsonArray;
                         try {
                             jsonArray = new JSONArray(response);
-                            responseLength = jsonArray.length();
                             getItems(jsonArray);
-
                         } catch (JSONException e) {
-                            new AlertDialog(MainActivity.this, "Error");
-                            swipeRefreshLayout.setRefreshing(false);
-                            mayLoad = true;
-                            progressBar.setVisibility(View.GONE);
+                            onStopRequest("Error");
                         }
                     }
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                new AlertDialog(MainActivity.this, "Error");
-                swipeRefreshLayout.setRefreshing(false);
-                mayLoad = true;
-                progressBar.setVisibility(View.GONE);
+                onStopRequest("Error");
             }
         }) {
             @Override
@@ -204,39 +196,32 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
     private void getItems(JSONArray response) {
 
-        long id;
-        String title, description;
-        Integer height, width;
-        String hidpi, normal, teaser;
-
-        Images images;
-
         responseLengthForImageLoad = response.length();
-
+        //counter = 0;
         for (int i = 0; i < responseLengthForImageLoad; i++) {
             try {
                 JSONObject item = response.getJSONObject(i);
 
-                id = item.isNull("id") ? (long) 0 : item.getLong("id");
-                title = item.getString("title");
-                description = item.getString("description");
-                height = item.getInt("height");
-                width = item.getInt("width");
+                long id = item.isNull("id") ? 0L : item.getLong("id");
+                String title = item.getString("title");
+                String description = item.getString("description");
+                Integer height = item.getInt("height");
+                Integer width = item.getInt("width");
 
                 JSONObject imagesJSONObj = new JSONObject(item.getString("images"));
-                hidpi = imagesJSONObj.getString("hidpi");
-                normal = imagesJSONObj.getString("normal");
-                teaser = imagesJSONObj.getString("teaser");
+                String hidpi = imagesJSONObj.getString("hidpi");
+                String normal = imagesJSONObj.getString("normal");
+                String teaser = imagesJSONObj.getString("teaser");
 
-                images = new Images(hidpi, normal, teaser);
+                Images images = new Images(hidpi, normal, teaser);
 
                 Shot shot = new Shot(id, title, description, height, width, images);
-                imageDownload(shot);
 
+                imageDownload(shot);
 
             } catch (JSONException e) {
                 e.printStackTrace();
-                new AlertDialog(MainActivity.this, getString(R.string.error) + e.toString());
+                responseLengthForImageLoad --;
             }
         }
     }
@@ -270,19 +255,26 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
     }
 
-    private int counter = 0;
-    synchronized void checkEnd(){ // Detect the end of all threads
-        counter++;
-        if(counter >= responseLengthForImageLoad || counter >= responseLength) {
-            //On complete
-            swipeRefreshLayout.setRefreshing(false);
-            mayLoad = true;
-            progressBar.setVisibility(View.GONE);
-            //Unblocking screen
-            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+    synchronized void checkEnd(){
+        responseLengthForImageLoad--;
+        if(responseLengthForImageLoad < 1) {
 
-            AppController.getInstance().showToast(MainActivity.this, "Page: "+page +"\n from server has finished");
+            onStopRequest(null);
+
+            //AppController.getInstance().showToast(MainActivity.this, "Page: "+(page-1) +"\n from server has finished");
         }
+    }
+
+    private void onStopRequest(String msg){
+        if(msg!=null) {
+            new AlertDialog(MainActivity.this, msg);
+        }
+        swipeRefreshLayout.setRefreshing(false);
+        mayLoad = true;
+        progressBar.setVisibility(View.GONE);
+
+        //Unblocking screen
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
     }
 
 

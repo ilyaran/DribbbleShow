@@ -52,11 +52,14 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
     public void onBindViewHolder(final HolderShot holder, int position) {
         final Shot shot = shotList.get(position);
 
-        if (shot.getTitle() != null) holder.title.setText(shot.getTitle());
-        if (shot.getDescription() != null)
-            holder.description.setText(fromHtml(shot.getDescription()));
-
         if (shot.getShotBitmap() != null) {
+            if (shot.getTitle() != null) {
+                holder.title.setText(shot.getTitle());
+            }
+            if (shot.getDescription() != null) {
+                holder.description.setText(fromHtml(shot.getDescription()));
+            }
+
             holder.shotImageView.setImageBitmap(shot.getShotBitmap());
         }
 

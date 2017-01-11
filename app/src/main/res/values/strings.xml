@@ -5,9 +5,9 @@
 
     <string name="load_from_server">Server \nPage </string>
 
-    <string name="load_from_disk">Disk \nPage </string>
+    <string name="load_from_disk">Cache \nPage </string>
 
     <string name="error">Error: </string>
 
-    <string name="end_disk">End disk</string>
+    <string name="end_disk">Cache is empty</string>
 </resources>
