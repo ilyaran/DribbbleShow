@@ -6,6 +6,7 @@ import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
@@ -39,7 +40,7 @@ import mysite.com.dribbbleshow.AppUtils.FileIO;
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
 
-    private static final int perPage = 8;
+    private static final int perPage = 50;
     private String url = "https://api.dribbble.com/v1/shots?per_page="+perPage+"&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
     private List<Shot> shotList = new ArrayList<>();
     private RecyclerView recyclerView;
@@ -51,11 +52,11 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     LinearLayout progressBar;
 
     // The life span of and item in the history folder
-    private final long SHOT_LIFESPAN_MS = 88 * 3600000; // 88 hours in milliseconds
+    private final long SHOT_LIFESPAN_MS = 24 * 3600000; // 24 hours in milliseconds
 
     private AppPermission permission;
     @Override
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],@NonNull int[] grantResults) {
         permission.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
@@ -145,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                 loadShotsFromDisk();
             }
         }else {
-            new AlertDialog(this,"Internet permission is not granted");
+            new AlertDialog(this,"Internet DENIED");
         }
     }
 
@@ -193,10 +194,10 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
         long id;
         String title, description;
-        Integer height = null; Integer width = null;
+        Integer height, width;
         String hidpi,normal,teaser;
 
-        Images images = null;
+        Images images;
 
         for (int i = 0; i < response.length(); i++) {
             try {
@@ -297,7 +298,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }
             swipeRefreshLayout.setRefreshing(false);
         }else {
-            new AlertDialog(this,"No Permission Granted for Reading");
+            new AlertDialog(this,"Reading is DENIED");
         }
     }
 
