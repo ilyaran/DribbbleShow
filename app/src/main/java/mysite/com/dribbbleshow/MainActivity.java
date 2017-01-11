@@ -16,6 +16,7 @@ import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
+import android.view.WindowManager;
 import android.widget.LinearLayout;
 
 import com.android.volley.AuthFailureError;
@@ -40,8 +41,8 @@ import mysite.com.dribbbleshow.AppUtils.FileIO;
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
 
-    private static final int perPage = 50;
-    private String url = "https://api.dribbble.com/v1/shots?per_page="+perPage+"&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
+    private static final int perPage = 12;
+    private String url = "https://api.dribbble.com/v1/shots?per_page=" + perPage + "&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
     private List<Shot> shotList = new ArrayList<>();
     private RecyclerView recyclerView;
     private AdapterShots mAdapter;
@@ -49,14 +50,17 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private int pageDisk = 1;
     private SwipeRefreshLayout swipeRefreshLayout;
     private boolean mayLoad = true;
-    LinearLayout progressBar;
+    private LinearLayout progressBar;
+    private int responseLengthForImageLoad;
+    private int responseLength;
 
     // The life span of and item in the history folder
     private final long SHOT_LIFESPAN_MS = 24 * 3600000; // 24 hours in milliseconds
 
     private AppPermission permission;
+
     @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[],@NonNull int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String permissions[], @NonNull int[] grantResults) {
         permission.onRequestPermissionsResult(requestCode, permissions, grantResults);
     }
 
@@ -70,14 +74,14 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             permission.askPermissions();
         }
 
-        progressBar = (LinearLayout)findViewById(R.id.progressBar);
+        progressBar = (LinearLayout) findViewById(R.id.progressBar);
 
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipeContainer);
         swipeRefreshLayout.setOnRefreshListener(this);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
         mAdapter = new AdapterShots(shotList);
-        final GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(),2);
+        final GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
         gridLayoutManager.setSpanCount(1);
         recyclerView.setLayoutManager(gridLayoutManager);
         recyclerView.setItemAnimator(new DefaultItemAnimator());
@@ -85,14 +89,14 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
-                if(dy > 0){ //check for scroll down
+                if (dy > 0) { //check for scroll down
 
                     int visibleItemCount = gridLayoutManager.getChildCount();
                     int totalItemCount = gridLayoutManager.getItemCount();
                     int pastVisiblesItems = gridLayoutManager.findFirstVisibleItemPosition();
 
                     if (mayLoad) {
-                        if ( (visibleItemCount + pastVisiblesItems) >= totalItemCount) {
+                        if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
 
                             mayLoad = false;
 
@@ -115,43 +119,50 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
     public void checkInternetConnection() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET)
-                == PackageManager.PERMISSION_GRANTED) {
-            ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-            NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-            if (activeNetwork != null && activeNetwork.isConnectedOrConnecting()) {
-                StringRequest strReq = new StringRequest(Request.Method.GET,
-                        "http://www.google.com/", new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        requestShots(url + page);
-                        AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_server) + page);
-                        page++;
-                    }
-                }, new Response.ErrorListener() {
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        mayLoad = true;
-                        swipeRefreshLayout.setRefreshing(false);
-                        new AlertDialog(MainActivity.this, getString(R.string.no_connection));
-
-                        loadShotsFromDisk();
-                    }
-                });
-                AppController.getInstance().addToRequestQueue(strReq, "string_req");
-            } else {
-                mayLoad = true;
-                swipeRefreshLayout.setRefreshing(false);
-                new AlertDialog(MainActivity.this, getString(R.string.no_connection));
-
-                loadShotsFromDisk();
-            }
-        }else {
-            new AlertDialog(this,"Internet DENIED");
+                != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog(this, "Internet DENIED");
+            return;
         }
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        if (activeNetwork != null && activeNetwork.isConnectedOrConnecting()) {
+            StringRequest strReq = new StringRequest(Request.Method.GET,
+                    "http://www.google.com/", new Response.Listener<String>() {
+                @Override
+                public void onResponse(String response) {
+                    requestShots(url + page);
+                    AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_server) + page);
+                    page++;
+                }
+            }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    mayLoad = true;
+                    swipeRefreshLayout.setRefreshing(false);
+                    new AlertDialog(MainActivity.this, getString(R.string.no_connection));
+
+                    loadShotsFromDisk();
+                }
+            });
+            AppController.getInstance().addToRequestQueue(strReq, "string_req");
+        } else {
+            mayLoad = true;
+            swipeRefreshLayout.setRefreshing(false);
+            new AlertDialog(MainActivity.this, getString(R.string.no_connection));
+
+            loadShotsFromDisk();
+        }
+
     }
 
-    public void requestShots(String  url) {
+    public void requestShots(String url) {
         progressBar.setVisibility(View.VISIBLE);
+        //Blocking screen
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+        responseLengthForImageLoad = 0;
+        responseLength = 0;
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
                     @Override
@@ -160,10 +171,11 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                         JSONArray jsonArray;
                         try {
                             jsonArray = new JSONArray(response);
+                            responseLength = jsonArray.length();
                             getItems(jsonArray);
 
-                        }catch (JSONException e) {
-                            new AlertDialog(MainActivity.this,"Error");
+                        } catch (JSONException e) {
+                            new AlertDialog(MainActivity.this, "Error");
                             swipeRefreshLayout.setRefreshing(false);
                             mayLoad = true;
                             progressBar.setVisibility(View.GONE);
@@ -172,12 +184,12 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                 }, new Response.ErrorListener() {
             @Override
             public void onErrorResponse(VolleyError error) {
-                new AlertDialog(MainActivity.this,"Error");
+                new AlertDialog(MainActivity.this, "Error");
                 swipeRefreshLayout.setRefreshing(false);
                 mayLoad = true;
                 progressBar.setVisibility(View.GONE);
             }
-        }){
+        }) {
             @Override
             public Map<String, String> getHeaders() throws AuthFailureError {
                 Map<String, String> headers = new HashMap<>();
@@ -195,11 +207,13 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         long id;
         String title, description;
         Integer height, width;
-        String hidpi,normal,teaser;
+        String hidpi, normal, teaser;
 
         Images images;
 
-        for (int i = 0; i < response.length(); i++) {
+        responseLengthForImageLoad = response.length();
+
+        for (int i = 0; i < responseLengthForImageLoad; i++) {
             try {
                 JSONObject item = response.getJSONObject(i);
 
@@ -214,19 +228,20 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                 normal = imagesJSONObj.getString("normal");
                 teaser = imagesJSONObj.getString("teaser");
 
-                images = new Images(hidpi,normal,teaser);
+                images = new Images(hidpi, normal, teaser);
 
                 Shot shot = new Shot(id, title, description, height, width, images);
                 imageDownload(shot);
 
+
             } catch (JSONException e) {
                 e.printStackTrace();
-                new AlertDialog(MainActivity.this,getString(R.string.error)+e.toString());
+                new AlertDialog(MainActivity.this, getString(R.string.error) + e.toString());
             }
         }
     }
 
-    private void imageDownload(final Shot shot){
+    private void imageDownload(final Shot shot) {
         //Image download
         if (shot.getShotBitmap() == null && shot.getImages() != null) {
             String imgUrl = shot.getImages().getAvailableUrl();
@@ -241,20 +256,13 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                             addItemToList(shot);
                             mAdapter.notifyDataSetChanged();
                             saveShotItem(shot);
-
-                            //On complete
-                            swipeRefreshLayout.setRefreshing(false);
-                            mayLoad = true;
-                            progressBar.setVisibility(View.GONE);
+                            checkEnd();
                         }
                     }
 
                     @Override
                     public void onErrorResponse(VolleyError error) {
-                        //On complete
-                        swipeRefreshLayout.setRefreshing(false);
-                        mayLoad = true;
-                        progressBar.setVisibility(View.GONE);
+                        checkEnd();
                     }
 
                 });
@@ -262,51 +270,69 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
     }
 
+    private int counter = 0;
+    synchronized void checkEnd(){ // Detect the end of all threads
+        counter++;
+        if(counter >= responseLengthForImageLoad || counter >= responseLength) {
+            //On complete
+            swipeRefreshLayout.setRefreshing(false);
+            mayLoad = true;
+            progressBar.setVisibility(View.GONE);
+            //Unblocking screen
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+            AppController.getInstance().showToast(MainActivity.this, "Page: "+page +"\n from server has finished");
+        }
+    }
+
+
     // load shot items from the Shots folder
     public void loadShotsFromDisk() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
-            List<File> files = FileIO.GetFiles(FileIO.GetShotsSubfolder());
-            int all = files.size();
-            int start = (pageDisk - 1) * perPage;
-            int limit = perPage * pageDisk;
-
-            if ((all > 0 && (all >= start))) {
-                if (all < limit) {
-                    limit = all;
-                }
-                AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_disk) + pageDisk);
-                Shot shot;
-                long currentTime;
-                for (int i = start; i < limit; i++) {
-                    File file = files.get(i);
-                    currentTime = System.currentTimeMillis();
-                    if ((currentTime - file.lastModified()) < SHOT_LIFESPAN_MS) {
-                        shot = getShotItemFromFile(file.getAbsolutePath());
-                        if (null != shot) {
-                            addItemToList(shot);
-                        }
-                    } else {
-                        // file has expired, remove from history
-                        FileIO.Delete(FileIO.GetShotsSubfolder(), file.getName());
-                    }
-                }
-
-                pageDisk++;
-            } else {
-                AppController.getInstance().showToast(MainActivity.this, getString(R.string.end_disk));
-            }
-            swipeRefreshLayout.setRefreshing(false);
-        }else {
-            new AlertDialog(this,"Reading is DENIED");
+                != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog(this, "Reading is DENIED");
+            return;
         }
+
+        List<File> files = FileIO.GetFiles(FileIO.GetShotsSubfolder());
+        int all = files.size();
+        int start = (pageDisk - 1) * perPage;
+        int limit = perPage * pageDisk;
+
+        if ((all > 0 && (all >= start))) {
+            if (all < limit) {
+                limit = all;
+            }
+            AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_disk) + pageDisk);
+            Shot shot;
+            long currentTime;
+            for (int i = start; i < limit; i++) {
+                File file = files.get(i);
+                currentTime = System.currentTimeMillis();
+                if ((currentTime - file.lastModified()) < SHOT_LIFESPAN_MS) {
+                    shot = getShotItemFromFile(file.getAbsolutePath());
+                    if (null != shot) {
+                        addItemToList(shot);
+                    }
+                } else {
+                    // file has expired, remove from history
+                    FileIO.Delete(FileIO.GetShotsSubfolder(), file.getName());
+                }
+            }
+
+            pageDisk++;
+        } else {
+            AppController.getInstance().showToast(MainActivity.this, getString(R.string.end_disk));
+        }
+        swipeRefreshLayout.setRefreshing(false);
+
     }
 
     private void addItemToList(Shot shot) {
         if (shotList.isEmpty()) {
             shotList.add(shot);
-        }else {
-            shotList.add(0,shot); // insert before the first
+        } else {
+            shotList.add(0, shot); // insert before the first
         }
         mAdapter.notifyItemInserted(0);
     }

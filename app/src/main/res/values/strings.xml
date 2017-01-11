@@ -1,15 +1,11 @@
 <resources>
     <string name="app_name">DribbbleShow</string>
 
+    <string name="no_connection">No Internet Conection \nCheck your connection</string>
 
-    <string name="no_connection">No Internet Conection
- Check your connection</string>
+    <string name="load_from_server">Server \nPage </string>
 
-    <string name="load_from_server">From Internet
- Page </string>
-
-    <string name="load_from_disk">Loading from disk
- Page </string>
+    <string name="load_from_disk">Disk \nPage </string>
 
     <string name="error">Error: </string>
 
