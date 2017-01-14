@@ -3,9 +3,7 @@ package mysite.com.dribbbleshow;
 
 import android.app.Activity;
 import android.app.Application;
-import android.content.Context;
 import android.text.TextUtils;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,25 +15,80 @@ import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.Volley;
 
+import java.util.List;
+
+import io.realm.Realm;
+import io.realm.RealmConfiguration;
+import io.realm.RealmResults;
+import io.realm.Sort;
+
 public class AppController extends Application {
 
     public static final String TAG = AppController.class.getSimpleName();
 
-    public static String ROOT_SUBFOLDER = "AppRootSubfolder";
+    public static String ROOT_SUBFOLDER = "DribbbleRootSubfolder";
     public static String SHOTS_SUBFOLDER = "Shots";
+    // The life span of and item in the history folder
+    public static final long SHOT_LIFESPAN_MS = 24 * 3600000; // 24 hours in milliseconds
 
     private static AppController mInstance;
     private RequestQueue mRequestQueue;
     private ImageLoader mImageLoader;
 
+    Realm realm;
+
     @Override
     public void onCreate() {
         super.onCreate();
         mInstance = this;
+        // Realm DB
+        Realm.init(this);
+        RealmConfiguration config = new RealmConfiguration.Builder().build();
+        Realm.deleteRealm(config);
+        Realm.setDefaultConfiguration(config);
+
+        realm = Realm.getDefaultInstance();
+    }
+
+    public static synchronized AppController getInstance() {
+        return mInstance;
+    }
+
+    public void addList(final List<Shot> shotList) {
+        realm.executeTransaction(new Realm.Transaction() {
+            @Override
+            public void execute(Realm realm) {
+                for(Shot shot : shotList) {
+                    realm.copyToRealm(shot);
+                }
+            }
+        });
+    }
+
+    public List<Shot> findAll() {
+        Realm realm = Realm.getDefaultInstance();
+        long currentTime = System.currentTimeMillis();
+        final RealmResults<Shot> shotList = realm.where(Shot.class)
+                .findAllSorted("created", Sort.DESCENDING);
+        return shotList;
+    }
+
+    public void deleteAll() {
+        long currentTime = System.currentTimeMillis();
+
+        final RealmResults<Shot> shotList = realm.where(Shot.class)
+                .lessThan("created", currentTime - SHOT_LIFESPAN_MS).findAll();
+
+        realm.executeTransaction(new Realm.Transaction() {
+            @Override
+            public void execute(Realm realm) {
+                shotList.deleteAllFromRealm();
+            }
+        });
     }
 
     // Show Custom Toast
-    public void showToast(Activity context, String msg){
+    public void showToast(Activity context, String msg) {
         LayoutInflater inflater =
                 (LayoutInflater)
                         context.getLayoutInflater();
@@ -53,10 +106,6 @@ public class AppController extends Application {
     }
 
     //**************** Volley
-    public static synchronized AppController getInstance() {
-        return mInstance;
-    }
-
     public RequestQueue getRequestQueue() {
         if (mRequestQueue == null) {
             mRequestQueue = Volley.newRequestQueue(getApplicationContext());

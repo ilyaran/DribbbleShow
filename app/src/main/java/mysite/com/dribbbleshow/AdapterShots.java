@@ -1,5 +1,6 @@
 package mysite.com.dribbbleshow;
 
+import android.content.Context;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.Spanned;
@@ -8,15 +9,23 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.ImageLoader;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+
 import java.util.List;
 
 public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> {
 
+    Context mContext;
     private List<Shot> shotList;
 
     public class HolderShot extends RecyclerView.ViewHolder {
         public ImageView shotImageView;
         public TextView title, description;
+
         public HolderShot(View view) {
             super(view);
             shotImageView = (ImageView) view.findViewById(R.id.shotImageView);
@@ -25,8 +34,9 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
         }
     }
 
-    public AdapterShots(List<Shot> shotList) {
+    public AdapterShots(Context context, List<Shot> shotList) {
         this.shotList = shotList;
+        mContext = context;
     }
 
     @Override
@@ -52,7 +62,9 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
     public void onBindViewHolder(final HolderShot holder, int position) {
         final Shot shot = shotList.get(position);
 
-        if (shot.getShotBitmap() != null) {
+        String imgUrl = shot.getAvailableUrl();
+        if (imgUrl != null) {
+
             if (shot.getTitle() != null) {
                 holder.title.setText(shot.getTitle());
             }
@@ -60,7 +72,21 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
                 holder.description.setText(fromHtml(shot.getDescription()));
             }
 
-            holder.shotImageView.setImageBitmap(shot.getShotBitmap());
+            ImageLoader imageLoader = AppController.getInstance().getImageLoader();
+            imageLoader.get(imgUrl, new ImageLoader.ImageListener() {
+
+                @Override
+                public void onResponse(ImageLoader.ImageContainer response, boolean arg1) {
+                    if (response.getBitmap() != null) {
+                        holder.shotImageView.setImageBitmap(response.getBitmap());
+                    }
+                }
+
+                @Override
+                public void onErrorResponse(VolleyError error) {}
+
+            });
+
         }
 
     }

@@ -7,7 +7,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Build;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
@@ -23,21 +22,18 @@ import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.ImageLoader;
 import com.android.volley.toolbox.StringRequest;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import mysite.com.dribbbleshow.AppUtils.AppPermission;
-import mysite.com.dribbbleshow.AppUtils.FileIO;
+
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
 
@@ -51,10 +47,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private SwipeRefreshLayout swipeRefreshLayout;
     private boolean mayLoad = true;
     private LinearLayout progressBar;
-    private int responseLengthForImageLoad;
-
-    // The life span of and item in the history folder
-    private final long SHOT_LIFESPAN_MS = 24 * 3600000; // 24 hours in milliseconds
+    List<Shot> fromRealm;
 
     private AppPermission permission;
 
@@ -79,7 +72,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         swipeRefreshLayout.setOnRefreshListener(this);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-        mAdapter = new AdapterShots(shotList);
+        mAdapter = new AdapterShots(this,shotList);
         final GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
         gridLayoutManager.setSpanCount(1);
         recyclerView.setLayoutManager(gridLayoutManager);
@@ -98,7 +91,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                         if ((visibleItemCount + pastVisiblesItems) >= totalItemCount) {
 
                             mayLoad = false;
-
                             swipeRefreshLayout.setRefreshing(true);
 
                             checkInternetConnection();
@@ -108,12 +100,15 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             }
         });
 
+        AppController.getInstance().deleteAll();
+        fromRealm = AppController.getInstance().findAll();
+
         checkInternetConnection();
     }
 
     @Override
     public void onRefresh() {
-        loadShotsFromDisk();
+        loadShotsFromRealm();
     }
 
     public void checkInternetConnection() {
@@ -141,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
                     swipeRefreshLayout.setRefreshing(false);
 
                     new AlertDialog(MainActivity.this, getString(R.string.no_connection));
-                    loadShotsFromDisk();
+                    loadShotsFromRealm();
                 }
             });
             AppController.getInstance().addToRequestQueue(strReq, "string_req");
@@ -151,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             mayLoad = true;
             swipeRefreshLayout.setRefreshing(false);
 
-            loadShotsFromDisk();
+            loadShotsFromRealm();
         }
 
     }
@@ -161,8 +156,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         //Blocking screen
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-        responseLengthForImageLoad = 0;
 
         StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
                 new Response.Listener<String>() {
@@ -196,76 +189,34 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
     private void getItems(JSONArray response) {
 
-        responseLengthForImageLoad = response.length();
-        //counter = 0;
-        for (int i = 0; i < responseLengthForImageLoad; i++) {
+        for (int i = 0; i < response.length(); i++) {
             try {
                 JSONObject item = response.getJSONObject(i);
 
                 long id = item.isNull("id") ? 0L : item.getLong("id");
                 String title = item.getString("title");
                 String description = item.getString("description");
-                Integer height = item.getInt("height");
-                Integer width = item.getInt("width");
 
                 JSONObject imagesJSONObj = new JSONObject(item.getString("images"));
                 String hidpi = imagesJSONObj.getString("hidpi");
                 String normal = imagesJSONObj.getString("normal");
                 String teaser = imagesJSONObj.getString("teaser");
 
-                Images images = new Images(hidpi, normal, teaser);
+                Shot shot = new Shot(id, title, description, hidpi, normal, teaser);
 
-                Shot shot = new Shot(id, title, description, height, width, images);
-
-                imageDownload(shot);
+                shotList.add(shot);
 
             } catch (JSONException e) {
                 e.printStackTrace();
-                responseLengthForImageLoad --;
             }
         }
-    }
-
-    private void imageDownload(final Shot shot) {
-        //Image download
-        if (shot.getShotBitmap() == null && shot.getImages() != null) {
-            String imgUrl = shot.getImages().getAvailableUrl();
-            if (imgUrl != null) {
-                ImageLoader imageLoader = AppController.getInstance().getImageLoader();
-                imageLoader.get(imgUrl, new ImageLoader.ImageListener() {
-
-                    @Override
-                    public void onResponse(ImageLoader.ImageContainer response, boolean arg1) {
-                        if (response.getBitmap() != null) {
-                            shot.setShotBitmap(response.getBitmap());
-                            addItemToList(shot);
-                            mAdapter.notifyDataSetChanged();
-                            saveShotItem(shot);
-                            checkEnd();
-                        }
-                    }
-
-                    @Override
-                    public void onErrorResponse(VolleyError error) {
-                        checkEnd();
-                    }
-
-                });
-            }
-        }
-    }
-
-    synchronized void checkEnd(){
-        responseLengthForImageLoad--;
-        if(responseLengthForImageLoad < 1) {
-
-            onStopRequest(null);
-
-            //AppController.getInstance().showToast(MainActivity.this, "Page: "+(page-1) +"\n from server has finished");
-        }
+        mAdapter.notifyDataSetChanged();
+        onStopRequest(null);
     }
 
     private void onStopRequest(String msg){
+        //Unblocking screen
+        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
         if(msg!=null) {
             new AlertDialog(MainActivity.this, msg);
         }
@@ -273,47 +224,25 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         mayLoad = true;
         progressBar.setVisibility(View.GONE);
 
-        //Unblocking screen
-        getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+        AppController.getInstance().addList(shotList);
     }
 
-
     // load shot items from the Shots folder
-    public void loadShotsFromDisk() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-            new AlertDialog(this, "Reading is DENIED");
-            return;
-        }
+    public void loadShotsFromRealm() {
 
-        List<File> files = FileIO.GetFiles(FileIO.GetShotsSubfolder());
-        int all = files.size();
+        int all = fromRealm.size();
         int start = (pageDisk - 1) * perPage;
         int limit = perPage * pageDisk;
-
         if ((all > 0 && (all >= start))) {
             if (all < limit) {
                 limit = all;
             }
             AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_disk) + pageDisk);
-            Shot shot;
-            long currentTime;
             for (int i = start; i < limit; i++) {
-                File file = files.get(i);
-                currentTime = System.currentTimeMillis();
-                if ((currentTime - file.lastModified()) < SHOT_LIFESPAN_MS) {
-                    shot = getShotItemFromFile(file.getAbsolutePath());
-                    if (null != shot) {
-                        addItemToList(shot);
-                    }
-                } else {
-                    // file has expired, remove from history
-                    FileIO.Delete(FileIO.GetShotsSubfolder(), file.getName());
-                }
+                addItemToList(fromRealm.get(i));
             }
-
             pageDisk++;
-        } else {
+        }else {
             AppController.getInstance().showToast(MainActivity.this, getString(R.string.end_disk));
         }
         swipeRefreshLayout.setRefreshing(false);
@@ -329,27 +258,11 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         mAdapter.notifyItemInserted(0);
     }
 
-    @Nullable
-    private Shot getShotItemFromFile(String file) {
-        Shot shot = new Shot();
-        shot.setFile(file);
-        if (shot.deserialize()) {
-            return shot;
-        }
-        return null;
+    @Override
+    protected void onStop() {
+        AppController.getInstance().realm.close();
+        super.onStop();
     }
 
-    private boolean saveShotItem(Shot shot) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
-
-            FileIO.CreateSubfolder(FileIO.GetShotsSubfolder());
-            //shot.setFile(FileIO.GetShotsSubfolder() + "/" + shot.getId()+".shot");
-            shot.setFile(FileIO.GetShotsSubfolder() + "/" + shot.hashCode() + ".shot");
-            return shot.serialize();
-
-        }
-        return false;
-    }
 
 }
