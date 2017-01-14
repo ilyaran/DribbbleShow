@@ -82,8 +82,7 @@ public class AppController extends Application {
     // Show Custom Toast
     public void showToast(Activity context, String msg) {
         LayoutInflater inflater =
-                (LayoutInflater)
-                        context.getLayoutInflater();
+                context.getLayoutInflater();
         View layout = inflater.inflate(R.layout.custom_toast,
                 (ViewGroup) context.findViewById(R.id.custom_toast_container));
 
