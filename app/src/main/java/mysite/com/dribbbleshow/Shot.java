@@ -2,12 +2,13 @@ package mysite.com.dribbbleshow;
 
 import io.realm.RealmObject;
 import io.realm.annotations.Ignore;
+import io.realm.annotations.PrimaryKey;
 
 public class Shot extends RealmObject {
 
     @Ignore public static final String TAG = AppController.class.getSimpleName();
 
-    private long id;
+    @PrimaryKey private long id;
     private String title;
     private String description;
     private String hidpi;

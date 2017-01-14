@@ -1,6 +1,7 @@
 package mysite.com.dribbbleshow;
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.text.Spanned;
@@ -10,8 +11,9 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.ImageLoader;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.request.animation.GlideAnimation;
+import com.bumptech.glide.request.target.SimpleTarget;
 
 import java.util.List;
 
@@ -66,24 +68,20 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
             if (shot.getTitle() != null) {
                 holder.title.setText(shot.getTitle());
             }
+
             if (shot.getDescription() != null) {
                 holder.description.setText(fromHtml(shot.getDescription()));
             }
 
-            ImageLoader imageLoader = AppController.getInstance().getImageLoader();
-            imageLoader.get(imgUrl, new ImageLoader.ImageListener() {
-
-                @Override
-                public void onResponse(ImageLoader.ImageContainer response, boolean arg1) {
-                    if (response.getBitmap() != null) {
-                        holder.shotImageView.setImageBitmap(response.getBitmap());
-                    }
-                }
-
-                @Override
-                public void onErrorResponse(VolleyError error) {}
-
-            });
+            Glide.with(mContext)
+                    .load(imgUrl)
+                    .asBitmap()
+                    .into(new SimpleTarget<Bitmap>() {
+                        @Override
+                        public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                            holder.shotImageView.setImageBitmap(resource);
+                        }
+                    });
 
         }
 
