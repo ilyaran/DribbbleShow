@@ -1,4 +1,4 @@
-package mysite.com.dribbbleshow.AppUtils;
+package mysite.com.dribbbleshow.other;
 
 import android.content.pm.PackageManager;
 import android.os.Build;

@@ -1,4 +1,4 @@
-package mysite.com.dribbbleshow;
+package mysite.com.dribbbleshow.adapter;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -17,10 +17,13 @@ import com.bumptech.glide.request.target.SimpleTarget;
 
 import java.util.List;
 
-public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> {
+import mysite.com.dribbbleshow.R;
+import mysite.com.dribbbleshow.model.dto.ShotDTO;
+
+public class ShotsAdapter extends RecyclerView.Adapter<ShotsAdapter.HolderShot> {
 
     Context mContext;
-    private List<Shot> shotList;
+    private List<ShotDTO> shotList;
 
     public class HolderShot extends RecyclerView.ViewHolder {
         public ImageView shotImageView;
@@ -34,7 +37,7 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
         }
     }
 
-    public AdapterShots(Context context, List<Shot> shotList) {
+    public ShotsAdapter(Context context, List<ShotDTO> shotList) {
         this.shotList = shotList;
         mContext = context;
     }
@@ -60,31 +63,31 @@ public class AdapterShots extends RecyclerView.Adapter<AdapterShots.HolderShot> 
 
     @Override
     public void onBindViewHolder(final HolderShot holder, int position) {
-        final Shot shot = shotList.get(position);
+        final ShotDTO shot = shotList.get(position);
+        if (shot.getImages() != null) {
+            String imgUrl = shot.getImages().getAvailableUrl();
+            if (imgUrl != null) {
 
-        String imgUrl = shot.getAvailableUrl();
-        if (imgUrl != null) {
+                if (shot.getTitle() != null) {
+                    holder.title.setText(shot.getTitle());
+                }
 
-            if (shot.getTitle() != null) {
-                holder.title.setText(shot.getTitle());
+                if (shot.getDescription() != null) {
+                    holder.description.setText(fromHtml(shot.getDescription()));
+                }
+
+                Glide.with(mContext)
+                        .load(imgUrl)
+                        .asBitmap()
+                        .into(new SimpleTarget<Bitmap>() {
+                            @Override
+                            public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
+                                holder.shotImageView.setImageBitmap(resource);
+                            }
+                        });
+
             }
-
-            if (shot.getDescription() != null) {
-                holder.description.setText(fromHtml(shot.getDescription()));
-            }
-
-            Glide.with(mContext)
-                    .load(imgUrl)
-                    .asBitmap()
-                    .into(new SimpleTarget<Bitmap>() {
-                        @Override
-                        public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
-                            holder.shotImageView.setImageBitmap(resource);
-                        }
-                    });
-
         }
-
     }
 
     @Override

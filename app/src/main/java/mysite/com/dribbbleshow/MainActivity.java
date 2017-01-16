@@ -5,7 +5,6 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.os.AsyncTask;
 import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
@@ -18,34 +17,40 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import java.io.IOException;
+
 import java.util.ArrayList;
 import java.util.List;
-import mysite.com.dribbbleshow.AppUtils.AppPermission;
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+
+import mysite.com.dribbbleshow.model.api.ApiClient;
+import mysite.com.dribbbleshow.model.api.ApiInterface;
+import mysite.com.dribbbleshow.model.dto.ShotDTO;
+import mysite.com.dribbbleshow.other.AppPermission;
+import mysite.com.dribbbleshow.adapter.ShotsAdapter;
+import mysite.com.dribbbleshow.other.AlertDialog;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 
 public class MainActivity extends AppCompatActivity implements SwipeRefreshLayout.OnRefreshListener {
 
     private static final int perPage = 8;
-    private static final String url = "https://api.dribbble.com/v1/shots?per_page=" + perPage + "&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
-    private List<Shot> shotList = new ArrayList<>();
-    private RecyclerView recyclerView;
-    private AdapterShots mAdapter;
+
     private static int page = 1;
-    private static int pageDisk = 1;
+    private static int pageCache = 1;
+
+    private static final String url = "https://api.dribbble.com/v1/shots?per_page=" + perPage + "&list=attachments&list=debuts&list=playoffs&list=rebounds&list=teams&sort=recent&page=";
+    private List<ShotDTO> shotList = new ArrayList<>();
+    private RecyclerView recyclerView;
+    private ShotsAdapter mAdapter;
+
     private SwipeRefreshLayout swipeRefreshLayout;
     private static boolean mayLoad = true;
     private LinearLayout progressBar;
-    List<Shot> fromRealm;
-    OkHttpClient okHttpClient;
+    List<ShotDTO> fromRealm;
+    //OkHttpClient okHttpClient;
+    ApiInterface apiService;
+    Call<List<ShotDTO>> call;
 
     private AppPermission permission;
 
@@ -64,16 +69,13 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             permission.askPermissions();
         }
 
-        //okHttpClient init
-        okHttpClient = new OkHttpClient();
-
         progressBar = (LinearLayout) findViewById(R.id.progressBar);
 
         swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.swipeContainer);
         swipeRefreshLayout.setOnRefreshListener(this);
 
         recyclerView = (RecyclerView) findViewById(R.id.recycler_view);
-        mAdapter = new AdapterShots(this, shotList);
+        mAdapter = new ShotsAdapter(this, shotList);
         final GridLayoutManager gridLayoutManager = new GridLayoutManager(getApplicationContext(), 2);
         gridLayoutManager.setSpanCount(1);
         recyclerView.setLayoutManager(gridLayoutManager);
@@ -105,6 +107,8 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
         fromRealm = AppController.getInstance().findAll();
 
+        apiService = ApiClient.getClientDribbble().create(ApiInterface.class);
+
         checkInternetConnection();
     }
 
@@ -114,6 +118,72 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     }
 
     public void checkInternetConnection() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET)
+                != PackageManager.PERMISSION_GRANTED) {
+            new AlertDialog(this, "Internet DENIED");
+            return;
+        }
+        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+        if (activeNetwork != null && activeNetwork.isConnectedOrConnecting()) {
+
+            request();
+
+            AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_server) + page);
+
+            page++;
+
+        } else {
+            mayLoad = true;
+            swipeRefreshLayout.setRefreshing(false);
+
+            new AlertDialog(MainActivity.this, getString(R.string.no_connection));
+            loadShotsFromRealm();
+        }
+
+    }
+
+    private void request() {
+        progressBar.setVisibility(View.VISIBLE);
+        //Blocking screen
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
+                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
+        call = apiService.getShots(perPage, page);
+        call.enqueue(new Callback<List<ShotDTO>>() {
+            @Override
+            public void onResponse(Call<List<ShotDTO>> call, Response<List<ShotDTO>> response) {
+                if (response.isSuccessful()) {
+                    List<ShotDTO> responseShotList = response.body();
+
+                    if (responseShotList != null && !responseShotList.isEmpty()) {
+
+                        mayLoad = true;
+
+                        swipeRefreshLayout.setRefreshing(false);
+
+                        shotList.addAll(responseShotList);
+
+                        mAdapter.notifyDataSetChanged();
+
+                        onStopRequest(null);
+
+                    }
+                } else {
+                    onStopRequest("Error");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<List<ShotDTO>> call, Throwable t) {
+                t.printStackTrace();
+                onStopRequest("Error");
+            }
+        });
+    }
+
+
+    /*public void checkInternetConnection() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET)
                 != PackageManager.PERMISSION_GRANTED) {
             new AlertDialog(this, "Internet DENIED");
@@ -237,7 +307,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
         mAdapter.notifyDataSetChanged();
         onStopRequest(null);
-    }
+    }*/
 
     private void onStopRequest(String msg) {
         //Unblocking screen
@@ -249,6 +319,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         mayLoad = true;
         progressBar.setVisibility(View.GONE);
 
+        //save on DB
         AppController.getInstance().addList(shotList);
     }
 
@@ -256,24 +327,24 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     public void loadShotsFromRealm() {
 
         int all = fromRealm.size();
-        int start = (pageDisk - 1) * perPage;
-        int limit = perPage * pageDisk;
+        int start = (pageCache - 1) * perPage;
+        int limit = perPage * pageCache;
         if ((all > 0 && (all > start))) {
             if (all < limit) {
                 limit = all;
             }
-            AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_disk) + pageDisk);
+            AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_disk) + pageCache);
             for (int i = start; i < limit; i++) {
                 addItemToList(fromRealm.get(i));
             }
-            pageDisk++;
+            pageCache++;
         } else {
             AppController.getInstance().showToast(MainActivity.this, getString(R.string.end_disk));
         }
         swipeRefreshLayout.setRefreshing(false);
     }
 
-    private void addItemToList(Shot shot) {
+    private void addItemToList(ShotDTO shot) {
         if (shotList.isEmpty()) {
             shotList.add(shot);
         } else {
@@ -287,6 +358,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         super.onDestroy();
         //realm.close();
     }
+
 
 
 }

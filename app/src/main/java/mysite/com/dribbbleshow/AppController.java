@@ -3,7 +3,6 @@ package mysite.com.dribbbleshow;
 
 import android.app.Activity;
 import android.app.Application;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -14,17 +13,14 @@ import io.realm.Realm;
 import io.realm.RealmConfiguration;
 import io.realm.RealmResults;
 import io.realm.Sort;
+import mysite.com.dribbbleshow.model.dto.ShotDTO;
 
 public class AppController extends Application {
-
-    public static final String TAG = AppController.class.getSimpleName();
 
     // The life span of and item in the history folder
     public static final long SHOT_LIFESPAN_MS = 72*3600000; // milliseconds
 
     private static AppController mInstance;
-    /*private RequestQueue mRequestQueue;
-    private ImageLoader mImageLoader;*/
 
     Realm realm;
 
@@ -47,19 +43,19 @@ public class AppController extends Application {
     }
 
     // Realm DB
-    public void addList(final List<Shot> shotList) {
+    public void addList(final List<ShotDTO> shotList) {
         realm.executeTransaction(new Realm.Transaction() {
             @Override
             public void execute(Realm realm) {
-                for(Shot shot : shotList) {
+                for(ShotDTO shot : shotList) {
                     realm.copyToRealmOrUpdate(shot);
                 }
             }
         });
     }
 
-    public List<Shot> findAll() {
-        final RealmResults<Shot> shotList = realm.where(Shot.class)
+    public List<ShotDTO> findAll() {
+        final RealmResults<ShotDTO> shotList = realm.where(ShotDTO.class)
                 .findAllSorted("created", Sort.DESCENDING);
         return shotList;
     }
@@ -67,7 +63,7 @@ public class AppController extends Application {
     public void deleteAll() {
         long currentTime = System.currentTimeMillis();
 
-        final RealmResults<Shot> shotList = realm.where(Shot.class)
+        final RealmResults<ShotDTO> shotList = realm.where(ShotDTO.class)
                 .lessThan("created", currentTime - SHOT_LIFESPAN_MS).findAll();
 
         realm.executeTransaction(new Realm.Transaction() {

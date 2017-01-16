@@ -1,4 +1,4 @@
-package mysite.com.dribbbleshow;
+package mysite.com.dribbbleshow.other;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -7,12 +7,8 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
-
 import java.util.List;
-
-/**
- * Created by John on 03.01.2017.
- */
+import mysite.com.dribbbleshow.R;
 
 public class AlertDialog extends Dialog {
     private int LayoutResId;

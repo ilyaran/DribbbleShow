@@ -2,26 +2,28 @@ package mysite.com.dribbbleshow.model.dto;
 
 
 import java.util.List;
-
 import com.google.gson.annotations.Expose;
 import com.google.gson.annotations.SerializedName;
-
 import io.realm.RealmObject;
 import io.realm.annotations.Ignore;
 import io.realm.annotations.PrimaryKey;
 
-public class ShotRetrofit  {
+public class ShotDTO extends RealmObject {
 
-    @SerializedName("id") @Expose @PrimaryKey
-    private Long id;
+    @SerializedName("id") @Expose @PrimaryKey private Long id;
+
     @SerializedName("title") @Expose private String title;
+
     @SerializedName("description") @Expose private String description;
+
     @SerializedName("width") @Expose private Integer width;
+
     @SerializedName("height") @Expose private Integer height;
+
     @SerializedName("images")
-    @Expose
-    @Ignore
-    private Images images;
+
+    @Expose @Ignore private Images images;
+
     @SerializedName("views_count")
     @Expose
     private Integer viewsCount;
@@ -83,11 +85,18 @@ public class ShotRetrofit  {
     @Expose
     @Ignore private Team team;
 
+    private Long created;
     //constructor
     //public ShotRetrofit() {}
 
 
+    public ShotDTO() {
+        this.created = System.currentTimeMillis();
+    }
 
+    public Long getCreated() {
+        return created;
+    }
 
     public Long getId() {
         return id;
