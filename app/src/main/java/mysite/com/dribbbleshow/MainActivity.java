@@ -281,6 +281,12 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
         mAdapter.notifyItemInserted(0);
     }
+	
+	@Override
+    protected void onDestroy() {
+        super.onDestroy();
+        //realm.close();
+    }
 
 
 }
