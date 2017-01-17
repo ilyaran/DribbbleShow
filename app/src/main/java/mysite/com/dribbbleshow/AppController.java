@@ -29,7 +29,7 @@ public class AppController extends Application {
         super.onCreate();
         mInstance = this;
 
-        // Realm DB
+        // Realm DB init
         Realm.init(this);
         RealmConfiguration config = new RealmConfiguration.Builder().build();
         //Realm.deleteRealm(config);

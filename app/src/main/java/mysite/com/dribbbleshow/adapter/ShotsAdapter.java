@@ -12,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.animation.GlideAnimation;
 import com.bumptech.glide.request.target.SimpleTarget;
 
@@ -64,21 +65,19 @@ public class ShotsAdapter extends RecyclerView.Adapter<ShotsAdapter.HolderShot> 
     @Override
     public void onBindViewHolder(final HolderShot holder, int position) {
         final ShotDTO shot = shotList.get(position);
-        if (shot.getImages() != null) {
-            String imgUrl = shot.getImages().getAvailableUrl();
+        //if (shot.getImages() != null) {
+            String imgUrl = shot.getImgUrl();
             if (imgUrl != null) {
-
                 if (shot.getTitle() != null) {
                     holder.title.setText(shot.getTitle());
                 }
-
                 if (shot.getDescription() != null) {
                     holder.description.setText(fromHtml(shot.getDescription()));
                 }
-
                 Glide.with(mContext)
                         .load(imgUrl)
                         .asBitmap()
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
                         .into(new SimpleTarget<Bitmap>() {
                             @Override
                             public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation) {
@@ -87,7 +86,7 @@ public class ShotsAdapter extends RecyclerView.Adapter<ShotsAdapter.HolderShot> 
                         });
 
             }
-        }
+        //}
     }
 
     @Override

@@ -48,7 +48,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
     private static boolean mayLoad = true;
     private LinearLayout progressBar;
     List<ShotDTO> fromRealm;
-    //OkHttpClient okHttpClient;
     ApiInterface apiService;
     Call<List<ShotDTO>> call;
 
@@ -95,7 +94,6 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
                             mayLoad = false;
                             swipeRefreshLayout.setRefreshing(true);
-
                             checkInternetConnection();
                         }
                     }
@@ -104,11 +102,8 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         });
 
         AppController.getInstance().deleteAll();
-
         fromRealm = AppController.getInstance().findAll();
-
         apiService = ApiClient.getClientDribbble().create(ApiInterface.class);
-
         checkInternetConnection();
     }
 
@@ -123,6 +118,7 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
             new AlertDialog(this, "Internet DENIED");
             return;
         }
+
         ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
         if (activeNetwork != null && activeNetwork.isConnectedOrConnecting()) {
@@ -182,142 +178,22 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         });
     }
 
-
-    /*public void checkInternetConnection() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.INTERNET)
-                != PackageManager.PERMISSION_GRANTED) {
-            new AlertDialog(this, "Internet DENIED");
-            return;
-        }
-        ConnectivityManager cm = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        if (activeNetwork != null && activeNetwork.isConnectedOrConnecting()) {
-
-            Request request = new Request.Builder()
-                    .url("http://www.google.com/")
-                    .build();
-            okHttpClient.newCall(request).enqueue(new Callback() {
-                @Override
-                public void onFailure(Call call, IOException e) {
-                    mayLoad = true;
-                    swipeRefreshLayout.setRefreshing(false);
-
-                    new AlertDialog(MainActivity.this, getString(R.string.no_connection));
-                    loadShotsFromRealm();
-                }
-
-                @Override
-                public void onResponse(Call call, final Response response) throws IOException {
-                    if (!response.isSuccessful()) {
-                        throw new IOException("Unexpected code " + response);
-                    }else {
-                        // Read data on the worker thread
-                        final String responseData = response.body().string();
-
-                        // Run view-related code back on the main thread
-                        MainActivity.this.runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                requestShots(url + page);
-                                AppController.getInstance().showToast(MainActivity.this, getString(R.string.load_from_server) + page);
-                                page++;
-                            }
-                        });
-                    }
-                }
-            });
-
-        } else {
-            mayLoad = true;
-            swipeRefreshLayout.setRefreshing(false);
-
-            new AlertDialog(MainActivity.this, getString(R.string.no_connection));
-            loadShotsFromRealm();
-        }
-
-    }
-
-    public void requestShots(String url) {
-        progressBar.setVisibility(View.VISIBLE);
-        //Blocking screen
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
-                WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
-
-        Request request = new Request.Builder()
-                .header("Authorization", "Bearer bc3b4c9cc1dedb6598585d845b417541464ea447f4bd66a486dc1f32566c9c0e")
-                .url(url)
-                .build();
-
-        okHttpClient.newCall(request).enqueue(new Callback() {
-            @Override
-            public void onFailure(Call call, IOException e) {
-                onStopRequest("Error");
-            }
-
-            @Override
-            public void onResponse(Call call, final Response response) throws IOException {
-                if (!response.isSuccessful()) {
-                    throw new IOException("Unexpected code " + response);
-                }else {
-
-                    // Read data on the worker thread
-                    final String responseData = response.body().string();
-
-                    // Run view-related code back on the main thread
-                    MainActivity.this.runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            JSONArray jsonArray;
-                            try {
-                                jsonArray = new JSONArray(responseData);
-                                getItems(jsonArray);
-                            } catch (JSONException e) {
-                                onStopRequest("Error");
-                            }
-                        }
-                    });
-                }
-            }
-        });
-
-    }
-
-    private void getItems(JSONArray response) {
-
-        for (int i = 0; i < response.length(); i++) {
-            try {
-                JSONObject item = response.getJSONObject(i);
-
-                long id = item.isNull("id") ? 0L : item.getLong("id");
-                String title = item.getString("title");
-                String description = item.getString("description");
-
-                JSONObject imagesJSONObj = new JSONObject(item.getString("images"));
-                String hidpi = imagesJSONObj.getString("hidpi");
-                String normal = imagesJSONObj.getString("normal");
-                String teaser = imagesJSONObj.getString("teaser");
-
-                Shot shot = new Shot(id, title, description, hidpi, normal, teaser);
-
-                shotList.add(shot);
-
-            } catch (JSONException e) {
-                e.printStackTrace();
-            }
-        }
-        mAdapter.notifyDataSetChanged();
-        onStopRequest(null);
-    }*/
-
     private void onStopRequest(String msg) {
         //Unblocking screen
         getWindow().clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE);
+
         if (msg != null) {
             new AlertDialog(MainActivity.this, msg);
         }
+
         swipeRefreshLayout.setRefreshing(false);
         mayLoad = true;
         progressBar.setVisibility(View.GONE);
+
+        for(ShotDTO s:shotList){
+            s.setCreated();
+            s.setImgUrl();
+        }
 
         //save on DB
         AppController.getInstance().addList(shotList);

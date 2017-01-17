@@ -11,89 +11,50 @@ import io.realm.annotations.PrimaryKey;
 public class ShotDTO extends RealmObject {
 
     @SerializedName("id") @Expose @PrimaryKey private Long id;
-
     @SerializedName("title") @Expose private String title;
-
     @SerializedName("description") @Expose private String description;
-
     @SerializedName("width") @Expose private Integer width;
-
     @SerializedName("height") @Expose private Integer height;
+    @SerializedName("images") @Expose @Ignore private Images images;
+    @SerializedName("views_count") @Expose private Integer viewsCount;
+    @SerializedName("likes_count") @Expose private Integer likesCount;
+    @SerializedName("comments_count") @Expose private Integer commentsCount;
+    @SerializedName("attachments_count") @Expose private Integer attachmentsCount;
+    @SerializedName("rebounds_count") @Expose private Integer reboundsCount;
+    @SerializedName("buckets_count") @Expose private Integer bucketsCount;
+    @SerializedName("created_at") @Expose private String createdAt;
+    @SerializedName("updated_at") @Expose private String updatedAt;
+    @SerializedName("html_url") @Expose private String htmlUrl;
+    @SerializedName("attachments_url") @Expose private String attachmentsUrl;
+    @SerializedName("buckets_url") @Expose private String bucketsUrl;
+    @SerializedName("comments_url") @Expose private String commentsUrl;
+    @SerializedName("likes_url") @Expose private String likesUrl;
+    @SerializedName("projects_url") @Expose private String projectsUrl;
+    @SerializedName("rebounds_url") @Expose private String reboundsUrl;
+    @SerializedName("rebound_source_url") @Expose private String reboundSourceUrl;
+    @SerializedName("animated") @Expose private Boolean animated;
 
-    @SerializedName("images")
-
-    @Expose @Ignore private Images images;
-
-    @SerializedName("views_count")
-    @Expose
-    private Integer viewsCount;
-    @SerializedName("likes_count")
-    @Expose
-    private Integer likesCount;
-    @SerializedName("comments_count")
-    @Expose
-    private Integer commentsCount;
-    @SerializedName("attachments_count")
-    @Expose
-    private Integer attachmentsCount;
-    @SerializedName("rebounds_count")
-    @Expose
-    private Integer reboundsCount;
-    @SerializedName("buckets_count")
-    @Expose
-    private Integer bucketsCount;
-    @SerializedName("created_at")
-    @Expose
-    private String createdAt;
-    @SerializedName("updated_at")
-    @Expose
-    private String updatedAt;
-    @SerializedName("html_url")
-    @Expose
-    private String htmlUrl;
-    @SerializedName("attachments_url")
-    @Expose
-    private String attachmentsUrl;
-    @SerializedName("buckets_url")
-    @Expose
-    private String bucketsUrl;
-    @SerializedName("comments_url")
-    @Expose
-    private String commentsUrl;
-    @SerializedName("likes_url")
-    @Expose
-    private String likesUrl;
-    @SerializedName("projects_url")
-    @Expose
-    private String projectsUrl;
-    @SerializedName("rebounds_url")
-    @Expose
-    private String reboundsUrl;
-    @SerializedName("rebound_source_url")
-    @Expose
-    private String reboundSourceUrl;
-    @SerializedName("animated")
-    @Expose
-    private Boolean animated;
-    @SerializedName("tags")
-    @Expose
-    @Ignore private List<String> tags = null;
-    @SerializedName("user")
-    @Expose
-    @Ignore private User user;
-    @SerializedName("team")
-    @Expose
-    @Ignore private Team team;
+    @SerializedName("tags") @Expose @Ignore private List<String> tags = null;
+    @SerializedName("user") @Expose @Ignore private User user;
+    @SerializedName("team") @Expose @Ignore private Team team;
 
     private Long created;
+    private String imgUrl;
+
     //constructor
-    //public ShotRetrofit() {}
+    public ShotDTO() {}
 
 
-    public ShotDTO() {
-        this.created = System.currentTimeMillis();
+    public void setImgUrl() {
+        this.imgUrl = images.getAvailableUrl();
+    }
+    public String getImgUrl() {
+        return imgUrl;
     }
 
+    public void setCreated() {
+        this.created = System.currentTimeMillis();
+    }
     public Long getCreated() {
         return created;
     }
