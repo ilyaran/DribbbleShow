@@ -164,6 +164,8 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
 
                         onStopRequest(null);
 
+                    }else {
+                        onStopRequest("Empty");
                     }
                 } else {
                     onStopRequest("Error");
@@ -196,7 +198,9 @@ public class MainActivity extends AppCompatActivity implements SwipeRefreshLayou
         }
 
         //save on DB
-        AppController.getInstance().addList(shotList);
+	if (shotList != null && !shotList.isEmpty()) {
+        	AppController.getInstance().addList(shotList);
+	}
     }
 
     // load shot items from the Shots folder
